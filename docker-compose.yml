@@ -1,0 +1,46 @@
+version: '3.7'
+
+services:
+  develop_google_form_workspace:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: on-failure
+    container_name: google_form_workspace_develop
+    ports:
+      - '${PORT}:${PORT}' # Biến môi trường cho cổng
+    environment:
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+    volumes:
+      - ./:/usr/src/app
+      - /usr/src/app/node_modules
+    #      - /usr/src/app/dist
+    env_file:
+      - .env # Tải các biến môi trường từ tệp .env
+    networks:
+      - develop_google_form
+    tty: true
+    stdin_open: true
+#  mysql:
+#    image: mysql:5.7.31
+#    restart: always
+#    container_name: nest-mysql
+#    env_file:
+#      - .env
+#    environment:
+#      MYSQL_ROOT_PASSWORD: root
+#      MYSQL_DATABASE: ${DB_NAME}
+#      MYSQL_USER: ${DB_USER_NAME}
+#      MYSQL_PASSWORD: ${DB_USER_PASSWORD}
+#    ports:
+#      - "3306:3306"
+#    volumes:
+#      - .mysql-data:/var/lib/mysql
+#    networks:
+#      - develop_google_form
+
+networks:
+  develop_google_form:
+    driver: bridge
