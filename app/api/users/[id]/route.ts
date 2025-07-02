@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin} from "@/lib/supabase/admin";
 
 export async function GET(
   request: NextRequest,
@@ -45,9 +46,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
+    const { id } = await context.params
     const { name, role, company, is_active } = await request.json()
 
     if (!name) {
@@ -63,7 +65,7 @@ export async function PUT(
     const { data: existingUser, error: fetchError } = await supabase
       .from('user_profiles')
       .select('id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (fetchError || !existingUser) {
@@ -83,7 +85,7 @@ export async function PUT(
         status: is_active ? 'active' : 'inactive',
         updated_at: new Date().toISOString()
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single()
 
@@ -122,16 +124,17 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
+    const { id } = await context.params
     const supabase = await createClient()
 
     // ユーザー存在チェック
     const { data: existingUserDel, error: fetchError } = await supabase
       .from('user_profiles')
       .select('id, email')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (fetchError || !existingUserDel) {
@@ -145,7 +148,7 @@ export async function DELETE(
     const { data: uploads, error: uploadsError } = await supabase
       .from('uploads')
       .select('id')
-      .eq('created_by', params.id)
+      .eq('user_id', id)
       .limit(1)
 
     if (uploadsError) {
@@ -164,7 +167,7 @@ export async function DELETE(
           status: 'inactive',
           updated_at: new Date().toISOString()
         })
-        .eq('id', params.id)
+        .eq('id', id)
         .select()
         .single()
 
@@ -197,7 +200,9 @@ export async function DELETE(
     const { error: deleteError } = await supabase
       .from('user_profiles')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
+
+    await supabaseAdmin.auth.admin.deleteUser(id)
 
     if (deleteError) {
       console.error('User deletion error:', deleteError)

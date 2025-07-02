@@ -3,9 +3,10 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
+    const { id } = await context.params
     const { searchParams } = new URL(request.url)
     const questionId = searchParams.get('questionId')
     const analysisType = searchParams.get('analysisType') || 'distribution'
@@ -16,8 +17,8 @@ export async function GET(
     // アップロードデータを取得
     const { data: upload, error } = await supabase
       .from('uploads')
-      .select('analysis_data')
-      .eq('id', params.id)
+      .select('*')
+      .eq('id', id)
       .single()
 
     if (error || !upload) {
@@ -27,9 +28,12 @@ export async function GET(
       )
     }
 
-    const analysisData = upload.analysis_data
+    const { data: analysisData, error: analysisError } = await supabase
+      .from('analysis_results')
+      .select('*')
+      .eq('upload_id', upload.id)
 
-    if (!analysisData) {
+    if (analysisError || !analysisData) {
       return NextResponse.json(
         { error: '分析データが存在しません' },
         { status: 404 }
@@ -39,7 +43,7 @@ export async function GET(
     // 特定の設問の分析結果を取得
     if (questionId) {
       const questionAnalysis = findQuestionAnalysis(analysisData, questionId, analysisType)
-      
+
       if (!questionAnalysis) {
         return NextResponse.json(
           { error: '指定された設問の分析データが見つかりません' },
@@ -57,7 +61,7 @@ export async function GET(
     }
 
     // 全体の分析結果を返す
-    return NextResponse.json({ 
+    return NextResponse.json({
       analysis: analysisData,
       summary: analysisData.summary || null
     })
@@ -77,7 +81,7 @@ function findQuestionAnalysis(analysisData: any, questionId: string, analysisTyp
     return null
   }
 
-  return analysisData.analysisData.find((item: any) => 
+  return analysisData.analysisData.find((item: any) =>
     item.questionId === questionId && item.type === analysisType
   )
 }
@@ -86,32 +90,32 @@ function findQuestionAnalysis(analysisData: any, questionId: string, analysisTyp
 function applyFilter(analysis: any, filter: string) {
   // フィルター処理の実装
   // 例: 会社別、年代別、職種別のフィルタリング
-  
+
   if (!analysis.data || !Array.isArray(analysis.data)) {
     return analysis
   }
 
   const [filterType, filterValue] = filter.split(':')
-  
+
   switch (filterType) {
     case 'company':
       return {
         ...analysis,
-        data: analysis.data.filter((item: any) => 
+        data: analysis.data.filter((item: any) =>
           item.company === filterValue
         )
       }
     case 'age':
       return {
         ...analysis,
-        data: analysis.data.filter((item: any) => 
+        data: analysis.data.filter((item: any) =>
           item.ageGroup === filterValue
         )
       }
     case 'jobType':
       return {
         ...analysis,
-        data: analysis.data.filter((item: any) => 
+        data: analysis.data.filter((item: any) =>
           item.jobType === filterValue
         )
       }

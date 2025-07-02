@@ -11,39 +11,57 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient()
 
+    // Build query for data
     let query = supabase
-      .from('uploads')
-      .select('*')
-      .order('created_at', { ascending: false })
+        .from('uploads')
+        .select('*')
+        .order('created_at', { ascending: false })
 
-    // 年度フィルター
+    // Filters
     if (year) {
       query = query.eq('year', parseInt(year))
     }
 
     // 検索フィルター
     if (search) {
-      query = query.ilike('filename', `%${search}%`)
+      query = query.ilike('file_name', `%${search}%`)
     }
 
-    // ページネーション
+    // Pagination range
     const from = (page - 1) * limit
     const to = from + limit - 1
 
-    // カウント取得
-    const { count } = await supabase
-      .from('uploads')
-      .select('*', { count: 'exact', head: true })
+    // Clone query for count
+    let countQuery = supabase
+        .from('uploads')
+        .select('*', { count: 'exact', head: true })
 
-    // データ取得
-    const { data: uploads, error } = await query
-      .range(from, to)
+    if (year) {
+      countQuery = countQuery.eq('year', parseInt(year))
+    }
+
+    if (search) {
+      countQuery = countQuery.ilike('file_name', `%${search}%`)
+    }
+
+    const { count, error: countError } = await countQuery
+
+    if (countError) {
+      console.error('Count error:', countError)
+      return NextResponse.json(
+          { error: '件数の取得に失敗しました' },
+          { status: 500 }
+      )
+    }
+
+    // Get paginated data
+    const { data: uploads, error } = await query.range(from, to)
 
     if (error) {
       console.error('Database error:', error)
       return NextResponse.json(
-        { error: 'データの取得に失敗しました' },
-        { status: 500 }
+          { error: 'データの取得に失敗しました' },
+          { status: 500 }
       )
     }
 
@@ -60,8 +78,8 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Uploads fetch error:', error)
     return NextResponse.json(
-      { error: 'サーバーエラーが発生しました' },
-      { status: 500 }
+        { error: 'サーバーエラーが発生しました' },
+        { status: 500 }
     )
   }
 }
