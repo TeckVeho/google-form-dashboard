@@ -3,16 +3,17 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
+    const { id } = await context.params
     const supabase = await createClient()
 
     // アップロードデータを取得
     const { data: upload, error } = await supabase
       .from('uploads')
-      .select('analysis_data')
-      .eq('id', params.id)
+      .select('*')
+      .eq('id', id)
       .single()
 
     if (error || !upload) {
@@ -22,14 +23,24 @@ export async function GET(
       )
     }
 
-    const analysisData = upload.analysis_data
+    const { data: analysisData, error: analysisError } = await supabase
+        .from('analysis_results')
+        .select('*')
+        .eq('upload_id', upload.id)
 
-    if (!analysisData || !analysisData.parseResult) {
+    if (analysisError || !analysisData) {
       return NextResponse.json(
-        { error: '分析データが存在しません' },
-        { status: 404 }
+          { error: '分析データが存在しません' },
+          { status: 404 }
       )
     }
+
+    // if (!analysisData || !analysisData.parseResult) {
+    //   return NextResponse.json(
+    //     { error: '分析データが存在しません' },
+    //     { status: 404 }
+    //   )
+    // }
 
     // 設問一覧を生成
     const questions = generateQuestionsList(analysisData)
@@ -52,7 +63,7 @@ function generateQuestionsList(analysisData: any) {
   // パースされたデータから設問を抽出
   if (analysisData.parseResult?.metadata?.headers) {
     const headers = analysisData.parseResult.metadata.headers
-    
+
     headers.forEach((header: string, index: number) => {
       // システム項目をスキップ
       if (isSystemField(header)) {
@@ -61,7 +72,7 @@ function generateQuestionsList(analysisData: any) {
 
       const questionId = generateQuestionId(header)
       const questionType = detectQuestionType(header, analysisData)
-      
+
       questions.push({
         id: questionId,
         originalHeader: header,
@@ -103,8 +114,8 @@ function isSystemField(header: string): boolean {
     'email', 'メールアドレス', 'メール',
     'name', '名前', '氏名'
   ]
-  
-  return systemFields.some(field => 
+
+  return systemFields.some(field =>
     header.toLowerCase().includes(field.toLowerCase())
   )
 }
@@ -121,28 +132,28 @@ function generateQuestionId(header: string): string {
 // 設問タイプを検出
 function detectQuestionType(header: string, analysisData: any): string {
   const headerLower = header.toLowerCase()
-  
+
   if (headerLower.includes('満足') || headerLower.includes('評価')) {
     return 'likert'
   }
-  
+
   if (headerLower.includes('年代') || headerLower.includes('年齢')) {
     return 'demographic'
   }
-  
+
   if (headerLower.includes('会社') || headerLower.includes('企業')) {
     return 'categorical'
   }
-  
+
   if (headerLower.includes('職種') || headerLower.includes('部署')) {
     return 'categorical'
   }
-  
-  if (headerLower.includes('コメント') || headerLower.includes('意見') || 
+
+  if (headerLower.includes('コメント') || headerLower.includes('意見') ||
       headerLower.includes('感想') || headerLower.includes('要望')) {
     return 'text'
   }
-  
+
   // 選択肢の数で判定を試行
   if (analysisData.parseResult?.data) {
     const sampleData = analysisData.parseResult.data.slice(0, 100)
@@ -150,14 +161,14 @@ function detectQuestionType(header: string, analysisData: any): string {
       sampleData.map((row: any) => row.answers[generateQuestionId(header)])
         .filter((val: any) => val != null && val !== '')
     )
-    
+
     if (uniqueValues.size <= 10) {
       return 'categorical'
     } else if (uniqueValues.size > 50) {
       return 'text'
     }
   }
-  
+
   return 'categorical'
 }
 
@@ -174,26 +185,26 @@ function hasAnalysisData(analysisData: any, questionId: string): boolean {
   if (!analysisData.analysisData || !Array.isArray(analysisData.analysisData)) {
     return false
   }
-  
+
   return analysisData.analysisData.some((item: any) => item.questionId === questionId)
 }
 
 // 利用可能な分析タイプを取得
 function getAvailableAnalysisTypes(analysisData: any, questionId: string, questionType: string): string[] {
   const types = []
-  
+
   if (!analysisData.analysisData || !Array.isArray(analysisData.analysisData)) {
     return getDefaultAnalysisTypes(questionType)
   }
-  
-  const questionAnalyses = analysisData.analysisData.filter((item: any) => 
+
+  const questionAnalyses = analysisData.analysisData.filter((item: any) =>
     item.questionId === questionId
   )
-  
+
   if (questionAnalyses.length > 0) {
     return questionAnalyses.map((item: any) => item.type)
   }
-  
+
   return getDefaultAnalysisTypes(questionType)
 }
 
@@ -227,6 +238,6 @@ function getQuestionLabel(questionId: string): string {
     'age_group': '年代',
     'experience_years': '勤続年数'
   }
-  
+
   return labels[questionId] || questionId
 }

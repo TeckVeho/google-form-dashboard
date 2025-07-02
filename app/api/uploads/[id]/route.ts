@@ -3,15 +3,16 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
+    const { id } = await context.params
     const supabase = await createClient()
 
     const { data: upload, error } = await supabase
       .from('uploads')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (error || !upload) {
@@ -34,16 +35,17 @@ export async function GET(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
+    const { id } = await context.params
     const supabase = await createClient()
 
     // アップロード情報を取得
     const { data: upload, error: fetchError } = await supabase
       .from('uploads')
       .select('file_path')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (fetchError || !upload) {
@@ -67,7 +69,7 @@ export async function DELETE(
     const { error: dbError } = await supabase
       .from('uploads')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
 
     if (dbError) {
       console.error('Database delete error:', dbError)

@@ -22,7 +22,7 @@ function HomePage() {
   const [selectedYear, setSelectedYear] = useState("2024年")
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null)
-  
+
   const router = useRouter()
   const { user } = useAuth()
 
@@ -39,10 +39,10 @@ function HomePage() {
     try {
       const response = await fetch('/api/auth-status')
       const result = await response.json()
-      
+
       console.log('🔍 認証状態チェック結果:', result)
       setUploadSuccess(`認証状態: ${JSON.stringify(result, null, 2)}`)
-      
+
     } catch (error) {
       console.error('Auth check error:', error)
       setUploadError(error instanceof Error ? error.message : '認証状態の確認に失敗しました')
@@ -53,35 +53,35 @@ function HomePage() {
     try {
       setUploadError(null)
       setUploadSuccess('Supabase診断を実行中...')
-      
+
       const response = await fetch('/api/supabase-debug')
       const result = await response.json()
-      
+
       console.log('🔍 Supabase詳細診断結果:', result)
-      
+
       // 結果をより読みやすい形式で表示
       let message = '=== Supabase詳細診断結果 ===\n\n'
-      
+
       if (result.success) {
         message += '✅ 環境設定:\n'
         message += `  - URL設定: ${result.environment.hasUrl ? '✓' : '✗'}\n`
         message += `  - APIキー設定: ${result.environment.hasKey ? '✓' : '✗'}\n`
         message += `  - URL形式: ${result.environment.urlFormat ? '✓' : '✗'}\n`
         message += `  - キー形式: ${result.environment.keyFormat ? '✓' : '✗'}\n\n`
-        
+
         message += '🔗 接続状況:\n'
         message += `  - データベース: ${result.connection.database.connected ? '✓ 接続OK' : '✗ 接続NG'}\n`
         message += `  - ストレージ: ${result.connection.storage.connected ? '✓ 接続OK' : '✗ 接続NG'}\n`
         message += `  - セッション: ${result.connection.session.exists ? '✓ 存在' : '✗ なし'}\n`
         message += `  - ユーザー: ${result.connection.user.exists ? '✓ 認証済み' : '✗ 未認証'}\n\n`
-        
+
         if (result.connection.session.error) {
           message += `❌ セッションエラー: ${result.connection.session.error}\n`
         }
         if (result.connection.user.error) {
           message += `❌ ユーザーエラー: ${result.connection.user.error}\n`
         }
-        
+
         if (result.recommendations && result.recommendations.length > 0) {
           message += '\n💡 推奨事項:\n'
           result.recommendations.forEach((rec: string, index: number) => {
@@ -94,9 +94,9 @@ function HomePage() {
           message += `詳細: ${JSON.stringify(result.details, null, 2)}\n`
         }
       }
-      
+
       setUploadSuccess(message)
-      
+
     } catch (error) {
       console.error('Supabase debug error:', error)
       setUploadError(error instanceof Error ? error.message : 'Supabase診断に失敗しました')
@@ -105,17 +105,17 @@ function HomePage() {
 
   const handleLocalUpload = async () => {
     if (!file) return
-    
+
     setUploading(true)
     setUploadError(null)
     setUploadSuccess(null)
     setUploadProgress(0)
-    
+
     try {
       const formData = new FormData()
       formData.append('file', file)
       formData.append('year', selectedYear)
-      
+
       // プログレスのシミュレーション
       const progressInterval = setInterval(() => {
         setUploadProgress(prev => {
@@ -126,28 +126,28 @@ function HomePage() {
           return prev + 10
         })
       }, 200)
-      
+
       const response = await fetch('/api/local-upload', {
         method: 'POST',
         body: formData,
       })
-      
+
       clearInterval(progressInterval)
       setUploadProgress(100)
-      
+
       const result = await response.json()
-      
+
       if (!response.ok) {
         throw new Error(result.error || 'ローカル保存版アップロードに失敗しました')
       }
-      
+
       setUploadSuccess('ローカル保存版アップロードと解析が完了しました！分析結果が保存されました。')
-      
+
       // 3秒後に結果を表示
       setTimeout(() => {
         alert(`アップロード完了!\nファイル: ${result.data.filename}\n回答数: ${result.data.total_responses}\nアップロードID: ${result.data.id}\n\n分析結果は tmp/uploads/ フォルダに保存されました。`)
       }, 2000)
-      
+
     } catch (error) {
       console.error('Local upload error:', error)
       setUploadError(error instanceof Error ? error.message : 'ローカル保存版アップロードに失敗しました')
@@ -159,17 +159,17 @@ function HomePage() {
 
   const handleBypassUpload = async () => {
     if (!file) return
-    
+
     setUploading(true)
     setUploadError(null)
     setUploadSuccess(null)
     setUploadProgress(0)
-    
+
     try {
       const formData = new FormData()
       formData.append('file', file)
       formData.append('year', selectedYear)
-      
+
       // プログレスのシミュレーション
       const progressInterval = setInterval(() => {
         setUploadProgress(prev => {
@@ -180,28 +180,28 @@ function HomePage() {
           return prev + 10
         })
       }, 200)
-      
+
       const response = await fetch('/api/bypass-auth-upload', {
         method: 'POST',
         body: formData,
       })
-      
+
       clearInterval(progressInterval)
       setUploadProgress(100)
-      
+
       const result = await response.json()
-      
+
       if (!response.ok) {
         throw new Error(result.error || '認証バイパス版アップロードに失敗しました')
       }
-      
+
       setUploadSuccess('認証バイパス版アップロードと解析が完了しました！')
-      
+
       // 3秒後に結果を表示（実際のIDの代わりにmock IDを使用）
       setTimeout(() => {
         alert(`アップロード完了!\nファイル: ${result.data.filename}\n回答数: ${result.data.total_responses}`)
       }, 2000)
-      
+
     } catch (error) {
       console.error('Bypass upload error:', error)
       setUploadError(error instanceof Error ? error.message : '認証バイパス版アップロードに失敗しました')
@@ -215,36 +215,36 @@ function HomePage() {
     setUploading(true)
     setUploadError(null)
     setUploadSuccess(null)
-    
+
     try {
       // クライアントサイドで直接Supabase認証を試行
       const { createClient } = await import('@/lib/supabase/client')
       const supabase = createClient()
-      
+
       console.log('🔐 手動ログイン試行: test@example.com')
-      
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email: 'test@example.com',
         password: 'test123456'
       })
-      
+
       if (error) {
         console.error('手動ログインエラー:', error)
         throw new Error(`ログインに失敗しました: ${error.message}`)
       }
-      
+
       console.log('✅ 手動ログイン成功:', {
         user: data.user?.id,
         session: !!data.session
       })
-      
+
       setUploadSuccess(`手動ログイン成功！\nユーザーID: ${data.user?.id}\nメール: ${data.user?.email}`)
-      
+
       // 認証状態を更新するためにページを再読み込み
       setTimeout(() => {
         window.location.reload()
       }, 2000)
-      
+
     } catch (error) {
       console.error('Manual login error:', error)
       setUploadError(error instanceof Error ? error.message : '手動ログインに失敗しました')
@@ -257,25 +257,25 @@ function HomePage() {
     setUploading(true)
     setUploadError(null)
     setUploadSuccess(null)
-    
+
     try {
       const response = await fetch('/api/dev-login', {
         method: 'POST',
       })
-      
+
       const result = await response.json()
-      
+
       if (!response.ok) {
         throw new Error(result.error || 'テストログインに失敗しました')
       }
-      
+
       setUploadSuccess(result.message || 'テストログインが完了しました')
-      
+
       // ページを再読み込みして認証状態を更新
       setTimeout(() => {
         window.location.reload()
       }, 1000)
-      
+
     } catch (error) {
       console.error('Dev login error:', error)
       setUploadError(error instanceof Error ? error.message : 'テストログインに失敗しました')
@@ -286,31 +286,31 @@ function HomePage() {
 
   const handleDebugUpload = async () => {
     if (!file || !user) return
-    
+
     setUploading(true)
     setUploadError(null)
     setUploadSuccess(null)
     setUploadProgress(0)
-    
+
     try {
       const formData = new FormData()
       formData.append('file', file)
       formData.append('year', selectedYear)
-      
+
       const response = await fetch('/api/test-upload-debug', {
         method: 'POST',
         body: formData,
       })
-      
+
       const result = await response.json()
-      
+
       if (!response.ok) {
         throw new Error(result.error || 'デバッグチェックに失敗しました')
       }
-      
+
       console.log('🔍 デバッグ結果:', result)
       setUploadSuccess(`デバッグ完了: ${JSON.stringify(result.debug, null, 2)}`)
-      
+
     } catch (error) {
       console.error('Debug error:', error)
       setUploadError(error instanceof Error ? error.message : 'デバッグに失敗しました')
@@ -322,17 +322,17 @@ function HomePage() {
 
   const handleUpload = async () => {
     if (!file || !user) return
-    
+
     setUploading(true)
     setUploadError(null)
     setUploadSuccess(null)
     setUploadProgress(0)
-    
+
     try {
       const formData = new FormData()
       formData.append('file', file)
       formData.append('year', selectedYear)
-      
+
       // プログレスのシミュレーション
       const progressInterval = setInterval(() => {
         setUploadProgress(prev => {
@@ -343,28 +343,28 @@ function HomePage() {
           return prev + 10
         })
       }, 200)
-      
+
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
       })
-      
+
       clearInterval(progressInterval)
       setUploadProgress(100)
-      
+
       const result = await response.json()
-      
+
       if (!response.ok) {
         throw new Error(result.error || 'アップロードに失敗しました')
       }
-      
+
       setUploadSuccess('Excelファイルのアップロードと解析が完了しました！')
-      
+
       // 3秒後に分析ページに移動
       setTimeout(() => {
-        router.push(`/analysis?id=${result.data.id}`)
+        router.push(`/analysis?id=${result.upload.id}`)
       }, 2000)
-      
+
     } catch (error) {
       console.error('Upload error:', error)
       // より詳細なエラーメッセージを表示
@@ -441,7 +441,7 @@ function HomePage() {
                 </AlertDescription>
               </Alert>
             )}
-            
+
             {uploading && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
@@ -451,14 +451,14 @@ function HomePage() {
                 <Progress value={uploadProgress} className="w-full" />
               </div>
             )}
-            
+
             {uploadError && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{uploadError}</AlertDescription>
               </Alert>
             )}
-            
+
             {uploadSuccess && (
               <Alert>
                 <CheckCircle className="h-4 w-4" />
@@ -470,58 +470,58 @@ function HomePage() {
                 {uploading ? "アップロード中..." : "アップロード開始"}
               </Button>
               {file && (
-                <Button 
-                  onClick={handleDebugUpload} 
-                  disabled={uploading} 
-                  variant="outline" 
+                <Button
+                  onClick={handleDebugUpload}
+                  disabled={uploading}
+                  variant="outline"
                   className="w-full"
                 >
                   デバッグ情報を確認
                 </Button>
               )}
               {!user && (
-                <Button 
-                  onClick={handleDevLogin} 
-                  disabled={uploading} 
-                  variant="secondary" 
+                <Button
+                  onClick={handleDevLogin}
+                  disabled={uploading}
+                  variant="secondary"
                   className="w-full"
                 >
                   開発用テストログイン
                 </Button>
               )}
               {!user && (
-                <Button 
-                  onClick={handleManualLogin} 
-                  disabled={uploading} 
-                  variant="default" 
+                <Button
+                  onClick={handleManualLogin}
+                  disabled={uploading}
+                  variant="default"
                   className="w-full bg-green-600 hover:bg-green-700"
                 >
                   手動テストログイン (test@example.com)
                 </Button>
               )}
-              <Button 
-                onClick={handleAuthCheck} 
-                disabled={uploading} 
-                variant="outline" 
+              <Button
+                onClick={handleAuthCheck}
+                disabled={uploading}
+                variant="outline"
                 size="sm"
                 className="w-full"
               >
                 認証状態を確認
               </Button>
-              <Button 
-                onClick={handleSupabaseDebug} 
-                disabled={uploading} 
-                variant="outline" 
+              <Button
+                onClick={handleSupabaseDebug}
+                disabled={uploading}
+                variant="outline"
                 size="sm"
                 className="w-full bg-blue-50 hover:bg-blue-100 border-blue-200"
               >
                 Supabase詳細診断
               </Button>
               {file && (
-                <Button 
-                  onClick={handleBypassUpload} 
-                  disabled={uploading} 
-                  variant="destructive" 
+                <Button
+                  onClick={handleBypassUpload}
+                  disabled={uploading}
+                  variant="destructive"
                   size="sm"
                   className="w-full"
                 >
@@ -529,10 +529,10 @@ function HomePage() {
                 </Button>
               )}
               {file && (
-                <Button 
-                  onClick={handleLocalUpload} 
-                  disabled={uploading} 
-                  variant="secondary" 
+                <Button
+                  onClick={handleLocalUpload}
+                  disabled={uploading}
+                  variant="secondary"
                   size="sm"
                   className="w-full"
                 >

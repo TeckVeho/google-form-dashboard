@@ -3,16 +3,17 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
+    const { id } = await context.params
     const supabase = await createClient()
 
     // アップロードデータを取得
     const { data: upload, error } = await supabase
       .from('uploads')
-      .select('analysis_data, filename, year, total_responses, created_at')
-      .eq('id', params.id)
+      .select('*')
+      .eq('id', id)
       .single()
 
     if (error || !upload) {
@@ -22,7 +23,17 @@ export async function GET(
       )
     }
 
-    const analysisData = upload.analysis_data
+    const { data: analysisData, error: analysisError } = await supabase
+        .from('analysis_results')
+        .select('*')
+        .eq('upload_id', upload.id)
+
+    if (analysisError || !analysisData) {
+      return NextResponse.json(
+          { error: '分析データが存在しません' },
+          { status: 404 }
+      )
+    }
 
     if (!analysisData) {
       return NextResponse.json(
@@ -34,7 +45,7 @@ export async function GET(
     // サマリー情報を生成
     const summary = {
       upload: {
-        id: params.id,
+        id: id,
         filename: upload.filename,
         year: upload.year,
         totalResponses: upload.total_responses,
@@ -77,7 +88,7 @@ function generateKeyMetrics(analysisData: any) {
   const metrics = []
 
   // 全体満足度
-  const overallSatisfaction = analysisData.analysisData.find((item: any) => 
+  const overallSatisfaction = analysisData.analysisData.find((item: any) =>
     item.questionId === 'overall_satisfaction' && item.type === 'distribution'
   )
 
@@ -88,13 +99,13 @@ function generateKeyMetrics(analysisData: any) {
       value: overallSatisfaction.averageScore || 0,
       unit: '点',
       trend: 'stable', // 前回との比較があれば算出
-      color: overallSatisfaction.averageScore >= 3.5 ? 'green' : 
+      color: overallSatisfaction.averageScore >= 3.5 ? 'green' :
              overallSatisfaction.averageScore >= 2.5 ? 'yellow' : 'red'
     })
   }
 
   // 職場環境満足度
-  const workEnvironment = analysisData.analysisData.find((item: any) => 
+  const workEnvironment = analysisData.analysisData.find((item: any) =>
     item.questionId === 'work_environment' && item.type === 'distribution'
   )
 
@@ -105,13 +116,13 @@ function generateKeyMetrics(analysisData: any) {
       value: workEnvironment.averageScore || 0,
       unit: '点',
       trend: 'stable',
-      color: workEnvironment.averageScore >= 3.5 ? 'green' : 
+      color: workEnvironment.averageScore >= 3.5 ? 'green' :
              workEnvironment.averageScore >= 2.5 ? 'yellow' : 'red'
     })
   }
 
   // ワークライフバランス
-  const workLifeBalance = analysisData.analysisData.find((item: any) => 
+  const workLifeBalance = analysisData.analysisData.find((item: any) =>
     item.questionId === 'work_life_balance' && item.type === 'distribution'
   )
 
@@ -122,7 +133,7 @@ function generateKeyMetrics(analysisData: any) {
       value: workLifeBalance.averageScore || 0,
       unit: '点',
       trend: 'stable',
-      color: workLifeBalance.averageScore >= 3.5 ? 'green' : 
+      color: workLifeBalance.averageScore >= 3.5 ? 'green' :
              workLifeBalance.averageScore >= 2.5 ? 'yellow' : 'red'
     })
   }
@@ -145,7 +156,7 @@ function generateChartData(analysisData: any) {
   // 満足度トレンド（主要項目）
   const satisfactionQuestions = [
     'overall_satisfaction',
-    'work_environment', 
+    'work_environment',
     'work_life_balance',
     'job_satisfaction',
     'compensation',
@@ -153,10 +164,10 @@ function generateChartData(analysisData: any) {
   ]
 
   satisfactionQuestions.forEach(questionId => {
-    const analysis = analysisData.analysisData.find((item: any) => 
+    const analysis = analysisData.analysisData.find((item: any) =>
       item.questionId === questionId && item.type === 'distribution'
     )
-    
+
     if (analysis && analysis.averageScore) {
       chartData.satisfactionTrend.push({
         question: getQuestionLabel(questionId),
@@ -167,10 +178,10 @@ function generateChartData(analysisData: any) {
   })
 
   // 年代別内訳
-  const ageAnalysis = analysisData.analysisData.find((item: any) => 
+  const ageAnalysis = analysisData.analysisData.find((item: any) =>
     item.type === 'demographic' && item.questionId === 'age'
   )
-  
+
   if (ageAnalysis && ageAnalysis.distribution) {
     chartData.demographicBreakdown = Object.entries(ageAnalysis.distribution).map(([age, count]) => ({
       category: age,
@@ -192,6 +203,6 @@ function getQuestionLabel(questionId: string): string {
     'compensation': '給与・待遇',
     'management_trust': '経営への信頼'
   }
-  
+
   return labels[questionId] || questionId
 }

@@ -32,32 +32,32 @@ function HistoryPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
-  
+
   useEffect(() => {
     fetchHistory()
   }, [currentPage, searchTerm])
-  
+
   const fetchHistory = async () => {
     try {
       setLoading(true)
       setError(null)
-      
+
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: '10',
         ...(searchTerm && { search: searchTerm })
       })
-      
+
       const response = await fetch(`/api/uploads?${params}`)
-      
+
       if (!response.ok) {
         throw new Error('履歴データの取得に失敗しました')
       }
-      
+
       const result = await response.json()
-      setHistoryData(result.data || [])
+      setHistoryData(result.uploads || [])
       setTotalPages(result.pagination?.totalPages || 1)
-      
+
     } catch (error) {
       console.error('History fetch error:', error)
       setError(error instanceof Error ? error.message : '履歴データの取得に失敗しました')
@@ -69,18 +69,18 @@ function HistoryPage() {
   const handleDelete = async (id: number) => {
     try {
       setDeleting(id)
-      
+
       const response = await fetch(`/api/uploads/${id}`, {
         method: 'DELETE'
       })
-      
+
       if (!response.ok) {
         throw new Error('データの削除に失敗しました')
       }
-      
+
       // 一覧を再取得
       await fetchHistory()
-      
+
     } catch (error) {
       console.error('Delete error:', error)
       setError(error instanceof Error ? error.message : 'データの削除に失敗しました')
@@ -88,21 +88,21 @@ function HistoryPage() {
       setDeleting(null)
     }
   }
-  
+
   const handleViewAnalysis = (id: number) => {
     router.push(`/analysis?id=${id}`)
   }
-  
+
   const handleSearch = (value: string) => {
     setSearchTerm(value)
     setCurrentPage(1)
   }
-  
-  const filteredData = historyData.filter(item => 
-    item.fileName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+
+  const filteredData = historyData.filter(item =>
+    item.file_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.year?.toLowerCase().includes(searchTerm.toLowerCase())
   )
-  
+
   if (loading) {
     return (
       <div className="space-y-8">
@@ -135,7 +135,7 @@ function HistoryPage() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-      
+
       <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">アップロード履歴</h1>
@@ -185,10 +185,10 @@ function HistoryPage() {
                       <TableCell className="font-medium">#{item.id}</TableCell>
                       <TableCell className="flex items-center space-x-2">
                         <FileSpreadsheet className="h-4 w-4 text-green-600" />
-                        <span className="font-medium">{item.fileName}</span>
+                        <span className="font-medium">{item.file_name}</span>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {item.uploadDate ? new Date(item.uploadDate).toLocaleString('ja-JP') : '-'}
+                        {item.upload_date ? new Date(item.upload_date).toLocaleString('ja-JP') : '-'}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="flex items-center space-x-1">
@@ -198,9 +198,9 @@ function HistoryPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => handleViewAnalysis(item.id)}
                             className="text-blue-600 hover:text-blue-700"
                           >
@@ -208,9 +208,9 @@ function HistoryPage() {
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
+                              <Button
+                                variant="ghost"
+                                size="sm"
                                 className="text-red-600 hover:text-red-700"
                                 disabled={deleting === item.id}
                               >
@@ -250,12 +250,12 @@ function HistoryPage() {
           </div>
         </CardContent>
       </Card>
-      
+
       {/* ページネーション */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center space-x-2">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
             disabled={currentPage === 1}
           >
@@ -264,8 +264,8 @@ function HistoryPage() {
           <span className="text-sm text-muted-foreground">
             {currentPage} / {totalPages}
           </span>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
             disabled={currentPage === totalPages}
           >

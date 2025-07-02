@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from "@/lib/supabase/admin"
 
 export async function GET(request: NextRequest) {
   try {
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient()
 
     // 既存ユーザーチェック
-    const { data: existingUser } = await supabase
+    const { data: existingUser } = await supabaseAdmin
       .from('user_profiles')
       .select('id')
       .eq('email', email)
@@ -109,10 +110,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Tạo user mới cho bảng auth.user
+    const { data: newAuthUser, error: newAuthUserError } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      email_confirm: true, // set false nếu muốn gửi email xác thực
+    })
+
+    if (newAuthUserError || !newAuthUser) {
+      console.error('User creation error:', newAuthUserError)
+      return NextResponse.json(
+          { error: 'ユーザーの作成に失敗しました' },
+          { status: 500 }
+      )
+    }
+
     // 新規ユーザー作成
-    const { data: newUser, error } = await supabase
+    const { data: newUser, error } = await supabaseAdmin
       .from('user_profiles')
       .insert({
+        id: newAuthUser.user.id,
         email,
         name,
         role: role || 'user',
