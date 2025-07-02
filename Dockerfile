@@ -1,30 +1,70 @@
-# ベースイメージとしてNode.js 20を使用
-FROM node:18
+FROM node:24 AS base
 
-# 必要なシステムライブラリをインストール
-RUN apt-get update && apt-get install -y \
-    libcairo2-dev \
-    libpango1.0-dev \
-    libjpeg-dev \
-    libgif-dev \
-    librsvg2-dev \
-    pkg-config \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache bash
 
-# 作業ディレクトリを設定
+# Install dependencies only when needed
+FROM base AS deps
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# package.jsonとpackage-lock.jsonをコピー
-COPY package*.json ./
+# Copy package.json và package-lock.json vào thư mục làm việc
+COPY package.json yarn.lock* package-lock.json* ./
 
-# 依存関係をインストール
-RUN npm ci
+# Cài đặt dependencies
+RUN \
+  if [ -f yarn.lock ]; then yarn --frozen-lockfile; \
+  elif [ -f package-lock.json ]; then npm ci; \
+  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm i --frozen-lockfile; \
+  else echo "Lockfile not found." && exit 1; \
+  fi
 
-# アプリケーションのソースコードをコピー
+# Rebuild the source code only when needed
+FROM base AS builder
+WORKDIR /app
+
+# Copy dependencies từ stage deps
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy toàn bộ mã nguồn vào /app
 COPY . .
 
-# 3000番ポートを公開
-EXPOSE 3015
+# Build ứng dụng
+RUN \
+  if [ -f yarn.lock ]; then yarn run build; \
+  elif [ -f package-lock.json ]; then npm run build; \
+  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm run build; \
+  else echo "Lockfile not found." && exit 1; \
+  fi
 
-# 開発モードでアプリケーションを起動
-CMD ["npm", "run", "dev"]
+# Production image
+FROM base AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# Tạo user cho việc chạy ứng dụng
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Set permission cho thư mục .next
+RUN mkdir .next
+RUN chown nextjs:nodejs .next
+
+# Copy tệp cần thiết từ builder
+COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./
+COPY --from=builder --chown=nextjs:nodejs /app/package-lock.json ./
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/src ./src
+COPY --from=builder --chown=nextjs:nodejs /app/ ./
+
+
+USER nextjs
+
+EXPOSE 3020
+
+ENV PORT=3020
+
+# Set hostname và start command
+ENV HOSTNAME="0.0.0.0"
+CMD ["npm", "start"]
