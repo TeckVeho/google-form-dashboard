@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ファイルをSupabaseストレージにアップロード
-    const fileName = `${Date.now()}-${file.name}`
+    const fileName = `${Date.now()}-${sanitizeFileName(file.name)}`
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('survey-files')
       .upload(fileName, buffer, {
@@ -145,4 +145,12 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+function sanitizeFileName(name: string): string {
+  return name
+      .normalize("NFKD")                       // Loại bỏ ký tự Unicode đặc biệt
+      .replace(/[^\w.-]+/g, "_")               // Thay ký tự không hợp lệ bằng "_"
+      .replace(/_+/g, "_")                     // Gom nhiều dấu "_" liên tiếp thành 1
+      .replace(/^_+|_+$/g, "")                 // Loại bỏ "_" ở đầu và cuối
 }
