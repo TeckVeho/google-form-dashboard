@@ -1,11 +1,9 @@
 name: Deployment
-
 on:
   push:
     branches:
-      - master
+      - "master"
   workflow_dispatch:
-
 jobs:
   deploy-steps:
     runs-on: self-hosted
