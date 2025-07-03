@@ -1,0 +1,54 @@
+name: Deployment
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  deploy-steps:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup deployment environment
+        run: |
+          echo "build_command=${{ github.ref == 'refs/heads/master' && 'dev' || 'prod' }}" >> $GITHUB_ENV
+          echo "deploy_host=${{ github.ref == 'refs/heads/master' && '18.180.33.240' }}" >> $GITHUB_ENV
+          echo "deploy_path=${{ github.ref == 'refs/heads/master' && '/var/www/google-form-dashboard/develop' }}" >> $GITHUB_ENV
+
+      - name: Set up Variable ENV FE
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/master" ]; then
+            PORT=3020
+
+          cat <<EOF > .env
+          BASE_API=$BASE_API
+          PORT=$PORT
+          EOF
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/master" ]; then
+            export HOST="18.180.33.240"
+            export USER="deploy"
+            export DEPLOYPATH="/var/www/google-form-dashboard/develop"
+            
+            rsync -rzu --delete --exclude=.env ./ $USER@$HOST:$DEPLOYPATH
+            
+            #ssh $USER@$HOST "cd $DEPLOYPATH && docker-compose up -d --build && docker system prune -a -f"
+            ssh $USER@$HOST "cd $DEPLOYPATH && docker-compose pull && docker-compose up -d --force-recreate"
+          fi
+        env:
+          DEPLOY_USER: deploy
