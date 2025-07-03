@@ -10,23 +10,29 @@ jobs:
   deploy-steps:
     runs-on: self-hosted
     steps:
+      - name: Check Branch
+        run: |
+          if [ "${{ github.ref }}" != "refs/heads/master" ]; then
+            echo "Workflow is only allowed for the master or production branch. Exiting..."
+            exit 1
+          fi
       - uses: actions/checkout@v3
 
-      - name: Setup deployment environment
-        run: |
-          echo "build_command=${{ github.ref == 'refs/heads/master' && 'dev' || 'prod' }}" >> $GITHUB_ENV
-          echo "deploy_host=${{ github.ref == 'refs/heads/master' && '18.180.33.240' }}" >> $GITHUB_ENV
-          echo "deploy_path=${{ github.ref == 'refs/heads/master' && '/var/www/google-form-dashboard/develop' }}" >> $GITHUB_ENV
-
-      - name: Set up Variable ENV FE
-        run: |
-          if [ "${{ github.ref }}" == "refs/heads/master" ]; then
-            PORT=3020
-
-          cat <<EOF > .env
-          BASE_API=$BASE_API
-          PORT=$PORT
-          EOF
+#      - name: Setup deployment environment
+#        run: |
+#          echo "build_command=${{ github.ref == 'refs/heads/master' && 'dev' || 'prod' }}" >> $GITHUB_ENV
+#          echo "deploy_host=${{ github.ref == 'refs/heads/master' && '18.180.33.240' }}" >> $GITHUB_ENV
+#          echo "deploy_path=${{ github.ref == 'refs/heads/master' && '/var/www/google-form-dashboard/develop' }}" >> $GITHUB_ENV
+#
+#      - name: Set up Variable ENV FE
+#        run: |
+#          if [ "${{ github.ref }}" == "refs/heads/master" ]; then
+#            PORT=3020
+#
+#          cat <<EOF > .env
+#          BASE_API=$BASE_API
+#          PORT=$PORT
+#          EOF
 
       - uses: actions/setup-node@v3
         with:
