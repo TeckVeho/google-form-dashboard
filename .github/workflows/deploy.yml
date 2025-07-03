@@ -47,7 +47,8 @@ jobs:
             
             rsync -rzu --delete --exclude=.env ./ $USER@$HOST:$DEPLOYPATH
             
-            ssh $USER@$HOST "cd $DEPLOYPATH && docker-compose up -d --build"
+            #ssh $USER@$HOST "cd $DEPLOYPATH && docker-compose up -d --build && docker system prune -a -f"
+            ssh $USER@$HOST "cd $DEPLOYPATH && docker-compose pull && docker-compose up -d --force-recreate"
           fi
         env:
           DEPLOY_USER: deploy
