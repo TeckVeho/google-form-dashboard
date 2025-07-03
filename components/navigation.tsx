@@ -21,12 +21,13 @@ export default function Navigation() {
   // ナビゲーションアイテムを更新
   const navItems = [
     { href: "/", label: "ホーム", icon: Home },
-    { href: "/analysis", label: "分析", icon: BarChart3 },
+    { href: "/analysis", label: "分析", icon: BarChart3, key: "analysis" },
     { href: "/history", label: "履歴", icon: FileText },
     ...(isAdmin ? [{ href: "/users", label: "ユーザー管理", icon: Users }] : []),
   ]
 
   const handleSignOut = async () => {
+    localStorage.removeItem("analysisId")
     await signOut()
     window.location.href = '/auth/signin'
   }
@@ -58,6 +59,26 @@ export default function Navigation() {
             <div className="hidden md:flex items-center space-x-6">
               {navItems.map((item) => {
                 const Icon = item.icon
+
+                if (item.key === "analysis") {
+                  return (
+                      <button
+                          key={item.href}
+                          onClick={() => {
+                            const analysisId = localStorage.getItem("analysisId")
+                            const target = analysisId ? `/analysis?id=${analysisId}` : "/analysis"
+                            window.location.href = target
+                          }}
+                          className={`flex items-center space-x-2 text-sm font-medium transition-colors hover:text-primary ${
+                              pathname.startsWith("/analysis") ? "text-primary" : "text-muted-foreground"
+                          }`}
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span>{item.label}</span>
+                      </button>
+                  )
+                }
+
                 return (
                   <Link
                     key={item.href}
@@ -73,10 +94,10 @@ export default function Navigation() {
               })}
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-4">
             <ThemeToggle />
-            
+
             {user && !loading && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -88,7 +109,7 @@ export default function Navigation() {
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                
+
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                   <div className="flex flex-col space-y-1 p-2">
                     <p className="text-sm font-medium leading-none">
@@ -103,26 +124,26 @@ export default function Navigation() {
                       </p>
                     )}
                   </div>
-                  
+
                   <DropdownMenuSeparator />
-                  
+
                   <DropdownMenuItem asChild>
                     <Link href="/profile" className="cursor-pointer">
                       <User className="mr-2 h-4 w-4" />
                       プロファイル
                     </Link>
                   </DropdownMenuItem>
-                  
+
                   <DropdownMenuItem asChild>
                     <Link href="/settings" className="cursor-pointer">
                       <Settings className="mr-2 h-4 w-4" />
                       設定
                     </Link>
                   </DropdownMenuItem>
-                  
+
                   <DropdownMenuSeparator />
-                  
-                  <DropdownMenuItem 
+
+                  <DropdownMenuItem
                     className="cursor-pointer"
                     onClick={handleSignOut}
                   >
@@ -132,7 +153,7 @@ export default function Navigation() {
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
-            
+
             {!user && !loading && (
               <Button asChild>
                 <Link href="/auth/signin">ログイン</Link>
