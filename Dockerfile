@@ -1,70 +1,59 @@
-FROM node:24 AS base
+# Base image
+FROM node:22-alpine AS base
 
-RUN apk add --no-cache bash
+# Cài bash và pnpm (thay vì dùng corepack)
+RUN apk add --no-cache bash \
+    && npm install -g pnpm@10.12.3  # hoặc bản bạn muốn, có thể dùng latest
 
-# Install dependencies only when needed
+# Stage 1: Cài dependencies
 FROM base AS deps
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Copy package.json và package-lock.json vào thư mục làm việc
-COPY package.json yarn.lock* package-lock.json* ./
+# Copy lockfile và package.json
+COPY package.json pnpm-lock.yaml ./
 
-# Cài đặt dependencies
-RUN \
-  if [ -f yarn.lock ]; then yarn --frozen-lockfile; \
-  elif [ -f package-lock.json ]; then npm ci; \
-  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm i --frozen-lockfile; \
-  else echo "Lockfile not found." && exit 1; \
-  fi
+# Cài dependencies (không thay đổi lockfile)
+RUN pnpm install --frozen-lockfile
 
-# Rebuild the source code only when needed
+# Stage 2: Build ứng dụng
 FROM base AS builder
 WORKDIR /app
 
-# Copy dependencies từ stage deps
+# Copy node_modules từ deps
 COPY --from=deps /app/node_modules ./node_modules
 
-# Copy toàn bộ mã nguồn vào /app
+# Copy toàn bộ mã nguồn
 COPY . .
 
-# Build ứng dụng
-RUN \
-  if [ -f yarn.lock ]; then yarn run build; \
-  elif [ -f package-lock.json ]; then npm run build; \
-  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm run build; \
-  else echo "Lockfile not found." && exit 1; \
-  fi
+# Build app (Next.js)
+RUN pnpm run build
 
-# Production image
+# Stage 3: Production
 FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Tạo user cho việc chạy ứng dụng
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Tạo user không phải root
+RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
 
-# Set permission cho thư mục .next
-RUN mkdir .next
-RUN chown nextjs:nodejs .next
+# Tạo thư mục .next và phân quyền
+RUN mkdir .next && chown nextjs:nodejs .next
 
-# Copy tệp cần thiết từ builder
+# Copy các file build và runtime cần thiết
 COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/app ./app
+COPY --from=builder --chown=nextjs:nodejs /app/components ./components
+COPY --from=builder --chown=nextjs:nodejs /app/lib ./lib
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./
-COPY --from=builder --chown=nextjs:nodejs /app/package-lock.json ./
+COPY --from=builder --chown=nextjs:nodejs /app/pnpm-lock.yaml ./
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nextjs:nodejs /app/src ./src
-COPY --from=builder --chown=nextjs:nodejs /app/ ./
-
 
 USER nextjs
 
 EXPOSE 3020
-
 ENV PORT=3020
-
-# Set hostname và start command
 ENV HOSTNAME="0.0.0.0"
-CMD ["npm", "start"]
+
+CMD ["pnpm", "start"]
