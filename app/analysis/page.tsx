@@ -30,7 +30,7 @@ function AnalysisPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const analysisId = searchParams.get('id')
-  
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [analysisData, setAnalysisData] = useState<any>(null)
@@ -390,22 +390,24 @@ function AnalysisPage() {
       setLoading(false)
       return
     }
-    
+
+    // Lưu vào localStorage
+    localStorage.setItem("analysisId", analysisId)
     fetchAnalysisData()
   }, [analysisId])
-  
+
   const fetchAnalysisData = async () => {
     try {
       setLoading(true)
       setError(null)
-      
+
       // 分析データ、サマリー、質問一覧を並行取得
       const [analysisRes, summaryRes, questionsRes] = await Promise.all([
         fetch(`/api/analysis/${analysisId}`),
         fetch(`/api/analysis/summary/${analysisId}`),
         fetch(`/api/analysis/questions/${analysisId}`)
       ])
-      
+
       if (!analysisRes.ok) {
         throw new Error('分析データの取得に失敗しました')
       }
@@ -415,17 +417,17 @@ function AnalysisPage() {
       if (!questionsRes.ok) {
         throw new Error('質問データの取得に失敗しました')
       }
-      
+
       const [analysis, summary, questionsList] = await Promise.all([
         analysisRes.json(),
         summaryRes.json(),
         questionsRes.json()
       ])
-      
+
       setAnalysisData(analysis.data)
       setSummaryData(summary.data)
       setQuestions(questionsList.data || defaultQuestions)
-      
+
     } catch (error) {
       console.error('Analysis fetch error:', error)
       setError(error instanceof Error ? error.message : '分析データの取得に失敗しました')
@@ -435,7 +437,7 @@ function AnalysisPage() {
       setLoading(false)
     }
   }
-  
+
   const questionDataByYear = analysisData || {
     "2024年": {
       // 回答者属性のデータを追加
@@ -588,7 +590,7 @@ function AnalysisPage() {
   const [selectedCompany, setSelectedCompany] = useState("全社")
   const [selectedAnalysisYear, setSelectedAnalysisYear] = useState("2024年")
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null)
-  
+
   // ローディング表示
   if (loading) {
     return (
@@ -610,7 +612,7 @@ function AnalysisPage() {
       </div>
     )
   }
-  
+
   // エラー表示
   if (error) {
     return (
