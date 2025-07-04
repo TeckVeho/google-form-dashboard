@@ -16,10 +16,11 @@ import { useAuth } from "@/lib/auth/auth-context"
 import { Progress } from "@/components/ui/progress"
 
 function HomePage() {
+  const currentYear = new Date().getFullYear();
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
-  const [selectedYear, setSelectedYear] = useState("2024年")
+  const [selectedYear, setSelectedYear] = useState(`${currentYear}年`)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null)
 
