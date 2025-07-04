@@ -16,10 +16,11 @@ import { useAuth } from "@/lib/auth/auth-context"
 import { Progress } from "@/components/ui/progress"
 
 function HomePage() {
+  const currentYear = new Date().getFullYear();
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
-  const [selectedYear, setSelectedYear] = useState("2024年")
+  const [selectedYear, setSelectedYear] = useState(`${currentYear}年`)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null)
 
@@ -469,76 +470,6 @@ function HomePage() {
               <Button onClick={handleUpload} disabled={!file || uploading} className="w-full">
                 {uploading ? "アップロード中..." : "アップロード開始"}
               </Button>
-              {file && (
-                <Button
-                  onClick={handleDebugUpload}
-                  disabled={uploading}
-                  variant="outline"
-                  className="w-full"
-                >
-                  デバッグ情報を確認
-                </Button>
-              )}
-              {!user && (
-                <Button
-                  onClick={handleDevLogin}
-                  disabled={uploading}
-                  variant="secondary"
-                  className="w-full"
-                >
-                  開発用テストログイン
-                </Button>
-              )}
-              {!user && (
-                <Button
-                  onClick={handleManualLogin}
-                  disabled={uploading}
-                  variant="default"
-                  className="w-full bg-green-600 hover:bg-green-700"
-                >
-                  手動テストログイン (test@example.com)
-                </Button>
-              )}
-              <Button
-                onClick={handleAuthCheck}
-                disabled={uploading}
-                variant="outline"
-                size="sm"
-                className="w-full"
-              >
-                認証状態を確認
-              </Button>
-              <Button
-                onClick={handleSupabaseDebug}
-                disabled={uploading}
-                variant="outline"
-                size="sm"
-                className="w-full bg-blue-50 hover:bg-blue-100 border-blue-200"
-              >
-                Supabase詳細診断
-              </Button>
-              {file && (
-                <Button
-                  onClick={handleBypassUpload}
-                  disabled={uploading}
-                  variant="destructive"
-                  size="sm"
-                  className="w-full"
-                >
-                  認証バイパス版アップロード（開発用）
-                </Button>
-              )}
-              {file && (
-                <Button
-                  onClick={handleLocalUpload}
-                  disabled={uploading}
-                  variant="secondary"
-                  size="sm"
-                  className="w-full"
-                >
-                  ローカル保存版アップロード（推奨）
-                </Button>
-              )}
             </div>
           </CardContent>
         </Card>

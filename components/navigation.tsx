@@ -27,7 +27,6 @@ export default function Navigation() {
   ]
 
   const handleSignOut = async () => {
-    localStorage.removeItem("analysisId")
     await signOut()
     window.location.href = '/auth/signin'
   }
@@ -59,26 +58,6 @@ export default function Navigation() {
             <div className="hidden md:flex items-center space-x-6">
               {navItems.map((item) => {
                 const Icon = item.icon
-
-                if (item.key === "analysis") {
-                  return (
-                      <button
-                          key={item.href}
-                          onClick={() => {
-                            const analysisId = localStorage.getItem("analysisId")
-                            const target = analysisId ? `/analysis?id=${analysisId}` : "/analysis"
-                            window.location.href = target
-                          }}
-                          className={`flex items-center space-x-2 text-sm font-medium transition-colors hover:text-primary ${
-                              pathname.startsWith("/analysis") ? "text-primary" : "text-muted-foreground"
-                          }`}
-                      >
-                        <Icon className="h-4 w-4" />
-                        <span>{item.label}</span>
-                      </button>
-                  )
-                }
-
                 return (
                   <Link
                     key={item.href}

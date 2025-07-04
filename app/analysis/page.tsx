@@ -30,12 +30,16 @@ function AnalysisPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const analysisId = searchParams.get('id')
-
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [analysisData, setAnalysisData] = useState<any>(null)
   const [summaryData, setSummaryData] = useState<any>(null)
   const [questions, setQuestions] = useState<any[]>([])
+  const currentYear = new Date().getFullYear();
+  const years = ["2022年", "2023年", "2024年", "2025年"]
+  const [selectedAnalysisYear, setSelectedAnalysisYear] = useState(`${currentYear}年`)
+  const [year, setYear] = useState<string | null>(null)
+
   // 設問データの定義（fallback用）
   const defaultQuestions = [
     // 回答者属性
@@ -383,17 +387,39 @@ function AnalysisPage() {
     },
   ]
 
+  // Khi người dùng chọn năm mới, set `year` để kích hoạt useEffect
+  const handleYearChange = (newYear: string) => {
+    setSelectedAnalysisYear(newYear)
+    setYear(newYear)
+  }
+  // Khi `year` thay đổi → gọi API và chuyển hướng
+  useEffect(() => {
+    if (year || !analysisId) {
+      const fetchUploadByYear = async () => {
+        try {
+          const res = await fetch('/api/upload?year=' + (year || selectedAnalysisYear))
+          const data = await res.json()
+          console.log('upload: ', data)
+
+          if (data.upload?.id) {
+            router.push(`/analysis?id=${data.upload.id}`)
+          } else {
+            setError('分析IDが指定されていません')
+            setLoading(false)
+          }
+        } catch (err) {
+          console.error('Upload fetch error:', err)
+          setError('データ取得に失敗しました')
+        }
+      }
+      fetchUploadByYear()
+    }
+  }, [year, router, analysisId])
   // API経由でデータを取得
   useEffect(() => {
-    if (!analysisId) {
-      setError('分析IDが指定されていません')
-      setLoading(false)
-      return
+    if (analysisId) {
+      fetchAnalysisData()
     }
-
-    // Lưu vào localStorage
-    localStorage.setItem("analysisId", analysisId)
-    fetchAnalysisData()
   }, [analysisId])
 
   const fetchAnalysisData = async () => {
@@ -588,7 +614,6 @@ function AnalysisPage() {
   }
 
   const [selectedCompany, setSelectedCompany] = useState("全社")
-  const [selectedAnalysisYear, setSelectedAnalysisYear] = useState("2024年")
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null)
 
   // ローディング表示
@@ -805,14 +830,16 @@ function AnalysisPage() {
               <SelectItem value="ダイセー建設">ダイセー建設</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={selectedAnalysisYear} onValueChange={setSelectedAnalysisYear}>
+          <Select value={selectedAnalysisYear} onValueChange={handleYearChange}>
             <SelectTrigger className="w-32">
               <SelectValue placeholder="年度を選択" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="2023年">2023年</SelectItem>
-              <SelectItem value="2024年">2024年</SelectItem>
-              <SelectItem value="2025年">2025年</SelectItem>
+              {years.map((year) => (
+                  <SelectItem key={year} value={year}>
+                    {year}
+                  </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

@@ -2,6 +2,41 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { analyzeGoogleFormsExcel } from '@/lib/excel'
 
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const year = searchParams.get('year')
+
+    const supabase = await createClient()
+
+    const { data: upload, error } = await supabase
+        .from('uploads')
+        .select('*')
+        .eq('year', year)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+    if (error) {
+      console.log(error)
+      return NextResponse.json(
+          { error: 'ユーザーが見つかりません' },
+          { status: 404 }
+      )
+    }
+
+    return NextResponse.json({
+      upload: upload || [],
+    })
+
+  } catch (error) {
+    console.error('Uploads fetch error:', error)
+    return NextResponse.json(
+        { error: 'サーバーエラーが発生しました' },
+        { status: 500 }
+    )
+  }
+}
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
